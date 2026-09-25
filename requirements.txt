@@ -5,3 +5,5 @@ tiktoken
 numpy
 pandas
 sentence-transformers
+easyocr
+Pillow
