@@ -1,2 +1,7 @@
 streamlit
 groq
+requests
+tiktoken
+numpy
+pandas
+sentence-transformers
