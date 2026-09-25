@@ -8,6 +8,7 @@ import requests
 import streamlit as st
 import tiktoken
 from groq import Groq
+from PIL import Image
 
 st.set_page_config(page_title="Tokenización & Embeddings con Groq", page_icon="🧠", layout="wide")
 
@@ -111,8 +112,47 @@ with tab1:
     )
 
     st.divider()
+
+    # --- OCR: extraer el prompt desde una imagen ---
+    @st.cache_resource(show_spinner="Cargando modelo OCR (solo la primera vez)...")
+    def cargar_lector_ocr():
+        import easyocr
+        return easyocr.Reader(["es", "en"], gpu=False)
+
+    with st.expander("📷 OCR: extraer el prompt desde una imagen"):
+        imagen_subida = st.file_uploader(
+            "Sube una imagen con texto (foto, captura, escaneo...)",
+            type=["png", "jpg", "jpeg", "bmp", "webp"],
+        )
+        if imagen_subida is not None:
+            img = Image.open(imagen_subida).convert("RGB")
+            st.image(img, caption="Imagen cargada", use_container_width=True)
+
+            if st.button("🔍 Extraer texto con OCR"):
+                try:
+                    lector = cargar_lector_ocr()
+                    resultados = lector.readtext(np.array(img), detail=0)
+                    texto_extraido = "\n".join(resultados).strip()
+                    if texto_extraido:
+                        st.session_state["ocr_texto"] = texto_extraido
+                        st.success("Texto extraído y cargado en el prompt de abajo. Puedes editarlo antes de tokenizar.")
+                    else:
+                        st.warning("No se detectó texto legible en la imagen.")
+                except ModuleNotFoundError:
+                    st.error(
+                        "Falta instalar `easyocr`. Ejecuta: `pip install -r requirements.txt`"
+                    )
+                except Exception as e:
+                    st.error(f"Error ejecutando OCR: {e}")
+
     st.subheader("Ingresa un prompt para tokenizar")
-    prompt = st.text_area("Prompt", placeholder="Escribe aquí el texto a tokenizar...", height=100)
+    prompt = st.text_area(
+        "Prompt",
+        value=st.session_state.get("ocr_texto", ""),
+        placeholder="Escribe aquí el texto a tokenizar, o extráelo con OCR arriba...",
+        height=100,
+        key="prompt_area",
+    )
 
     if prompt:
         enc = obtener_encoder(encoding_name)
